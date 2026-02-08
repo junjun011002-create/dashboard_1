@@ -94,15 +94,11 @@ body {
 <script>
 // ===== 天気 =====
 async function loadWeather() {
-  try {
-    const url = "https://api.open-meteo.com/v1/forecast?latitude=35.6895&longitude=139.6917&current_weather=true";
-    const res = await fetch(url);
-    const data = await res.json();
-    document.getElementById("temp").textContent = data.current_weather.temperature + "℃";
-    document.getElementById("desc").textContent = weatherText(data.current_weather.weathercode);
-  } catch {
-    document.getElementById("desc").textContent = "取得失敗";
-  }
+  const url = "https://api.open-meteo.com/v1/forecast?latitude=35.6895&longitude=139.6917&current_weather=true";
+  const res = await fetch(url);
+  const data = await res.json();
+  document.getElementById("temp").textContent = data.current_weather.temperature + "℃";
+  document.getElementById("desc").textContent = weatherText(data.current_weather.weathercode);
 }
 
 function weatherText(code) {
@@ -114,27 +110,21 @@ function weatherText(code) {
   return "荒天";
 }
 
-// ===== JR東日本 公式JSON =====
+// ===== JR公式JSON + CORS回避 =====
 async function loadTrains() {
-  try {
-    const url = "https://www.jreast.co.jp/ryokaku/info/json/keikaku_unko.json";
-    const res = await fetch(url);
-    const data = await res.json();
-    const list = data.line;
+  const api = "https://api.allorigins.win/raw?url=" +
+    encodeURIComponent("https://www.jreast.co.jp/ryokaku/info/json/keikaku_unko.json");
 
-    showJR("埼京線", "saikyo", list);
-    showJR("山手線", "yamanote", list);
-    showJR("京浜東北線", "keihin", list);
-    showJR("中央線快速", "chuo", list);
-    showJR("中央・総武各駅停車", "sobu", list);
-    showJR("湘南新宿ライン", "shonan", list);
+  const res = await fetch(api);
+  const data = await res.json();
+  const list = data.line;
 
-  } catch (e) {
-    document.querySelectorAll(".status").forEach(el => {
-      el.textContent = "取得失敗";
-      el.className = "status stop";
-    });
-  }
+  showJR("埼京線", "saikyo", list);
+  showJR("山手線", "yamanote", list);
+  showJR("京浜東北線", "keihin", list);
+  showJR("中央線快速", "chuo", list);
+  showJR("中央・総武各駅停車", "sobu", list);
+  showJR("湘南新宿ライン", "shonan", list);
 }
 
 function showJR(name, id, list) {
@@ -142,7 +132,7 @@ function showJR(name, id, list) {
   const hit = list.find(l => l.name.includes(name));
 
   if (!hit) {
-    el.textContent = "データなし";
+    el.textContent = "情報なし";
     el.className = "status normal";
     return;
   }
@@ -159,12 +149,9 @@ function showJR(name, id, list) {
   }
 }
 
-// 初期ロード
 loadWeather();
 loadTrains();
-
-// 3分更新
-setInterval(loadWeather, 180000);
+setInterval(loadWeather, 300000);
 setInterval(loadTrains, 180000);
 </script>
 </body>
