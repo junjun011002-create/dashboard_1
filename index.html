@@ -2,50 +2,164 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>交通情報ダッシュボード</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>交通・天気ダッシュボード</title>
+
 <style>
 body {
-  margin:0;
-  font-family: system-ui;
-  background:#000;
-  color:#fff;
+  margin: 0;
+  background: black;
+  color: white;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
 }
-#train {
-  background:#111;
-  padding:10px 15px;
-  font-size:28px;
-  border-top:2px solid #333;
+
+#container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
 }
+
+#weather {
+  flex: 0 0 25%;
+  padding: 15px;
+  border-bottom: 2px solid #333;
+}
+
+#weather h1 {
+  margin: 0;
+  font-size: 28px;
+}
+
+#weather .temp {
+  font-size: 52px;
+  font-weight: bold;
+}
+
+#weather .desc {
+  font-size: 22px;
+  opacity: 0.9;
+}
+
+#trains {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.train {
+  border-left: 2px solid #333;
+  padding: 15px;
+}
+
+.train:first-child {
+  border-left: none;
+}
+
+.train h2 {
+  margin: 0 0 8px 0;
+  font-size: 24px;
+}
+
+.status {
+  font-size: 34px;
+  font-weight: bold;
+}
+
+.normal { color: #00ff7f; }
+.delay  { color: #ffcc00; }
+.stop   { color: #ff5555; }
 </style>
 </head>
-<body>
 
-<div id="train">運行情報 取得中...</div>
+<body>
+<div id="container">
+
+  <div id="weather">
+    <h1>新宿区 天気</h1>
+    <div class="temp" id="temp">--℃</div>
+    <div class="desc" id="desc">取得中...</div>
+  </div>
+
+  <div id="trains">
+    <div class="train"><h2>埼京線</h2><div class="status" id="saikyo">取得中...</div></div>
+    <div class="train"><h2>山手線</h2><div class="status" id="yamanote">取得中...</div></div>
+    <div class="train"><h2>京浜東北線</h2><div class="status" id="keihin">取得中...</div></div>
+    <div class="train"><h2>中央線</h2><div class="status" id="chuo">取得中...</div></div>
+    <div class="train"><h2>総武線</h2><div class="status" id="sobu">取得中...</div></div>
+    <div class="train"><h2>湘南新宿</h2><div class="status" id="shonan">取得中...</div></div>
+  </div>
+
+</div>
 
 <script>
-const url = "https://api.allorigins.win/raw?url=https://www.jreast.co.jp/rss/trafficinfo.xml";
+// ===== 天気（Open-Meteo）=====
+async function loadWeather() {
+  try {
+    const url = "https://api.open-meteo.com/v1/forecast?latitude=35.6895&longitude=139.6917&current_weather=true";
+    const res = await fetch(url);
+    const data = await res.json();
 
-fetch(url)
-  .then(res => res.text())
-  .then(str => new window.DOMParser().parseFromString(str, "text/xml"))
-  .then(data => {
-    const items = data.querySelectorAll("item");
-    let result = "";
+    document.getElementById("temp").textContent =
+      data.current_weather.temperature + "℃";
+    document.getElementById("desc").textContent =
+      weatherText(data.current_weather.weathercode);
 
-    items.forEach(item => {
-      const title = item.querySelector("title").textContent;
-      if (title.includes("埼京") || title.includes("山手") || title.includes("京浜東北")) {
-        result += "■ " + title + "<br>";
-      }
+  } catch (e) {
+    document.getElementById("desc").textContent = "取得失敗";
+  }
+}
+
+function weatherText(code) {
+  if (code === 0) return "快晴";
+  if (code <= 3) return "晴れ";
+  if (code <= 48) return "くもり";
+  if (code <= 67) return "雨";
+  if (code <= 77) return "雪";
+  return "荒天";
+}
+
+// ===== JR遅延情報 =====
+async function loadTrains() {
+  try {
+    const url = "https://rti-giken.jp/fhc/api/train_tetsudo/delay.json";
+    const res = await fetch(url);
+    const list = await res.json();
+
+    showStatus("埼京線", "saikyo", list);
+    showStatus("山手線", "yamanote", list);
+    showStatus("京浜東北", "keihin", list);
+    showStatus("中央線", "chuo", list);
+    showStatus("総武線", "sobu", list);
+    showStatus("湘南新宿", "shonan", list);
+
+  } catch (e) {
+    document.querySelectorAll(".status").forEach(el => {
+      el.textContent = "取得失敗";
+      el.className = "status stop";
     });
+  }
+}
 
-    document.getElementById("train").innerHTML = result || "現在、対象路線に遅延情報はありません";
-  })
-  .catch(() => {
-    document.getElementById("train").innerHTML = "取得エラー";
-  });
+function showStatus(name, id, list) {
+  const el = document.getElementById(id);
+  const hit = list.find(l => l.name.includes(name));
+
+  if (!hit) {
+    el.textContent = "平常運転";
+    el.className = "status normal";
+  } else {
+    el.textContent = "遅延";
+    el.className = "status delay";
+  }
+}
+
+// 初回実行
+loadWeather();
+loadTrains();
+
+// 5分ごと更新
+setInterval(loadWeather, 300000);
+setInterval(loadTrains, 300000);
 </script>
-
 </body>
 </html>
