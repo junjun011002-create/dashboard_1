@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>交通情報ダッシュボード</title>
+<style>
+body {
+  margin:0;
+  font-family: system-ui;
+  background:#000;
+  color:#fff;
+}
+#train {
+  background:#111;
+  padding:10px 15px;
+  font-size:28px;
+  border-top:2px solid #333;
+}
+</style>
+</head>
+<body>
+
+<div id="train">運行情報 取得中...</div>
+
+<script>
+const url = "https://api.allorigins.win/raw?url=https://www.jreast.co.jp/rss/trafficinfo.xml";
+
+fetch(url)
+  .then(res => res.text())
+  .then(str => new window.DOMParser().parseFromString(str, "text/xml"))
+  .then(data => {
+    const items = data.querySelectorAll("item");
+    let result = "";
+
+    items.forEach(item => {
+      const title = item.querySelector("title").textContent;
+      if (title.includes("埼京") || title.includes("山手") || title.includes("京浜東北")) {
+        result += "■ " + title + "<br>";
+      }
+    });
+
+    document.getElementById("train").innerHTML = result || "現在、対象路線に遅延情報はありません";
+  })
+  .catch(() => {
+    document.getElementById("train").innerHTML = "取得エラー";
+  });
+</script>
+
+</body>
+</html>
