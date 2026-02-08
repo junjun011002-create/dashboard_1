@@ -92,19 +92,15 @@ body {
 </div>
 
 <script>
-// ===== 天気（Open-Meteo）=====
+// ===== 天気 =====
 async function loadWeather() {
   try {
     const url = "https://api.open-meteo.com/v1/forecast?latitude=35.6895&longitude=139.6917&current_weather=true";
     const res = await fetch(url);
     const data = await res.json();
-
-    document.getElementById("temp").textContent =
-      data.current_weather.temperature + "℃";
-    document.getElementById("desc").textContent =
-      weatherText(data.current_weather.weathercode);
-
-  } catch (e) {
+    document.getElementById("temp").textContent = data.current_weather.temperature + "℃";
+    document.getElementById("desc").textContent = weatherText(data.current_weather.weathercode);
+  } catch {
     document.getElementById("desc").textContent = "取得失敗";
   }
 }
@@ -118,19 +114,20 @@ function weatherText(code) {
   return "荒天";
 }
 
-// ===== JR遅延情報 =====
+// ===== JR東日本 公式JSON =====
 async function loadTrains() {
   try {
-    const url = "https://rti-giken.jp/fhc/api/train_tetsudo/delay.json";
+    const url = "https://www.jreast.co.jp/ryokaku/info/json/keikaku_unko.json";
     const res = await fetch(url);
-    const list = await res.json();
+    const data = await res.json();
+    const list = data.line;
 
-    showStatus("埼京線", "saikyo", list);
-    showStatus("山手線", "yamanote", list);
-    showStatus("京浜東北", "keihin", list);
-    showStatus("中央線", "chuo", list);
-    showStatus("総武線", "sobu", list);
-    showStatus("湘南新宿", "shonan", list);
+    showJR("埼京線", "saikyo", list);
+    showJR("山手線", "yamanote", list);
+    showJR("京浜東北線", "keihin", list);
+    showJR("中央線快速", "chuo", list);
+    showJR("中央・総武各駅停車", "sobu", list);
+    showJR("湘南新宿ライン", "shonan", list);
 
   } catch (e) {
     document.querySelectorAll(".status").forEach(el => {
@@ -140,26 +137,35 @@ async function loadTrains() {
   }
 }
 
-function showStatus(name, id, list) {
+function showJR(name, id, list) {
   const el = document.getElementById(id);
   const hit = list.find(l => l.name.includes(name));
 
   if (!hit) {
+    el.textContent = "データなし";
+    el.className = "status normal";
+    return;
+  }
+
+  if (hit.status.includes("平常")) {
     el.textContent = "平常運転";
     el.className = "status normal";
-  } else {
+  } else if (hit.status.includes("遅れ") || hit.status.includes("遅延")) {
     el.textContent = "遅延";
     el.className = "status delay";
+  } else {
+    el.textContent = hit.status;
+    el.className = "status stop";
   }
 }
 
-// 初回実行
+// 初期ロード
 loadWeather();
 loadTrains();
 
-// 5分ごと更新
-setInterval(loadWeather, 300000);
-setInterval(loadTrains, 300000);
+// 3分更新
+setInterval(loadWeather, 180000);
+setInterval(loadTrains, 180000);
 </script>
 </body>
 </html>
